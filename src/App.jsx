@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import Web3 from "web3";
+import React, { useState } from "react";
+import { ethers } from "ethers";
 import SecretKeyStorage from "./contracts/SecretKeyStorage.json"; // Assume you have the contract ABI and address
 
 const App = () => {
@@ -8,21 +8,20 @@ const App = () => {
   const [accessAccount, setAccessAccount] = useState("");
   const [savedKeys, setSavedKeys] = useState([]);
   const [contract, setContract] = useState(null);
-  const [web3, setWeb3] = useState(null);
 
   // Connect to the Ethereum provider and initialize the contract
   const connectToBlockchain = async () => {
     try {
       if (window.ethereum) {
-        const web3Instance = new Web3(window.ethereum);
         await window.ethereum.enable();
-        setWeb3(web3Instance);
-
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const signer = provider.getSigner();
         const contractAddress = "YOUR_CONTRACT_ADDRESS"; // Replace with your actual contract address
         const contractABI = SecretKeyStorage.abi;
-        const deployedContract = new web3Instance.eth.Contract(
+        const deployedContract = new ethers.Contract(
+          contractAddress,
           contractABI,
-          contractAddress
+          signer
         );
         setContract(deployedContract);
       } else {
@@ -33,15 +32,9 @@ const App = () => {
     }
   };
 
-  useEffect(() => {
-    connectToBlockchain();
-  }, []);
-
   const handleSaveKey = async () => {
     try {
-      await contract.methods
-        .storeSecretKey(key, wallet)
-        .send({ from: (await web3.eth.getAccounts())[0] });
+      await contract.storeSecretKey(key, wallet);
       setSavedKeys([...savedKeys, key]);
     } catch (error) {
       console.error("Error saving key:", error);
@@ -50,9 +43,7 @@ const App = () => {
 
   const handleViewKeys = async () => {
     try {
-      const keys = await contract.methods
-        .getSecretKeys()
-        .call({ from: (await web3.eth.getAccounts())[0] });
+      const keys = await contract.getSecretKeys();
       setSavedKeys(keys);
     } catch (error) {
       console.error("Error viewing keys:", error);
@@ -61,9 +52,7 @@ const App = () => {
 
   const handleDeleteKey = async (keyToDelete) => {
     try {
-      await contract.methods
-        .deleteSecretKey(keyToDelete)
-        .send({ from: (await web3.eth.getAccounts())[0] });
+      await contract.deleteSecretKey(keyToDelete);
       setSavedKeys(savedKeys.filter((key) => key !== keyToDelete));
     } catch (error) {
       console.error("Error deleting key:", error);
@@ -72,9 +61,7 @@ const App = () => {
 
   const handleAddAccessAccount = async () => {
     try {
-      await contract.methods
-        .setAccessableAccounts(accessAccount)
-        .send({ from: (await web3.eth.getAccounts())[0] });
+      await contract.setAccessableAccounts(accessAccount);
     } catch (error) {
       console.error("Error adding access account:", error);
     }
